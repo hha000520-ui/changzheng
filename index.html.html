@@ -1,0 +1,1493 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>长征之路 - 角色差异化交互地图版</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'SimSun', 'STSong', 'Source Han Serif', serif;
+            background: linear-gradient(135deg, #FFE4E1 0%, #F08080 100%);
+            color: #021302;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            padding: 30px 0;
+            background: rgba(255, 228, 225, 0.95);
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+
+        .header h1 {
+            font-size: 42px;
+            color: #8B0000;
+            margin-bottom: 15px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .header p {
+            font-size: 20px;
+            color: #DC143C;
+            line-height: 1.6;
+        }
+
+        .audio-control {
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .audio-control audio {
+            width: 100%;
+            max-width: 600px;
+        }
+
+        .game-layout {
+            display: grid;
+            grid-template-columns: 300px 1fr 450px;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .control-panel {
+            background: rgba(255, 228, 225, 0.95);
+            padding: 20px;
+            border-radius: 15px;
+            height: fit-content;
+        }
+
+        .map-container {
+            background: rgba(255, 228, 225, 0.95);
+            padding: 25px;
+            border-radius: 15px;
+            position: relative;
+            height: 600px;
+        }
+
+        .content-panel {
+            background: rgba(255, 228, 225, 0.95);
+            padding: 25px;
+            border-radius: 15px;
+            max-height: 800px;
+            overflow-y: auto;
+        }
+
+        .stage-selector {
+            margin-bottom: 20px;
+        }
+
+        .stage-btn {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            background: #F08080;
+            color: #FFF5EE;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .stage-btn:hover {
+            background: #FF6B6B;
+            transform: translateY(-2px);
+        }
+
+        .stage-btn.active {
+            background: #90EE90;
+            color: #021302;
+            box-shadow: 0 4px 15px rgba(144, 238, 144, 0.4);
+        }
+
+        .stage-btn:disabled {
+            background: #D3D3D3;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        .role-selection h3 {
+            font-size: 18px;
+            margin-bottom: 12px;
+            color: #8B0000;
+        }
+
+        .role-btn {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin: 6px 0;
+            background: #FFA07A;
+            color: #FFF5EE;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .role-btn:hover {
+            background: #FF8C64;
+        }
+
+        .role-btn.selected {
+            background: #90EE90;
+            color: #021302;
+        }
+
+        .game-stats {
+            background: rgba(139, 0, 0, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: rgba(139, 0, 0, 0.2);
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 15px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #FF6B6B, #FFA07A);
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+
+        /* Leaflet地图样式 */
+        #longMarchMap {
+            width: 100%;
+            height: 100%;
+            border-radius: 10px;
+        }
+
+        /* Leaflet标记点样式 */
+        .map-point-active {
+            background-color: #DC143C;
+            border: 3px solid #FFF5EE;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            box-shadow: 0 0 10px rgba(220, 20, 60, 0.7);
+            animation: pulse 1.5s infinite;
+        }
+
+        .map-point-completed {
+            background-color: #90EE90;
+            border: 3px solid #FFF5EE;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+        }
+
+        .map-point-locked {
+            background-color: #D3D3D3;
+            border: 3px solid #FFF5EE;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            opacity: 0.5;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+
+        .location-tooltip {
+            background: rgba(139, 0, 0, 0.95);
+            color: #FFF5EE;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            max-width: 250px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .location-info {
+            background: rgba(139, 0, 0, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            border-left: 4px solid #DC143C;
+        }
+
+        .location-info h4 {
+            font-size: 18px;
+            color: #8B0000;
+            margin-bottom: 10px;
+        }
+
+        .location-info p {
+            font-size: 14px;
+            line-height: 1.6;
+            color: #DC143C;
+        }
+
+        /* 内容面板样式 */
+        .stage-content {
+            display: none;
+        }
+
+        .stage-content.active {
+            display: block;
+        }
+
+        .stage-title {
+            font-size: 24px;
+            color: #8B0000;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .historical-image {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 10px;
+            margin: 15px 0;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .historical-material {
+            background: rgba(139, 0, 0, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            border-left: 4px solid #DC143C;
+        }
+
+        .historical-material h4 {
+            font-size: 16px;
+            color: #8B0000;
+            margin-bottom: 10px;
+        }
+
+        .historical-material p {
+            font-size: 14px;
+            line-height: 1.6;
+            color: #DC143C;
+            font-style: italic;
+        }
+
+        .decision-panel {
+            margin: 15px 0;
+        }
+
+        .decision-panel h4 {
+            font-size: 18px;
+            color: #8B0000;
+            margin-bottom: 12px;
+        }
+
+        .decision-btn {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            background: #F08080;
+            color: #FFF5EE;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: left;
+            font-family: inherit;
+        }
+
+        .decision-btn:hover {
+            background: #FF6B6B;
+            transform: translateX(5px);
+        }
+
+        .decision-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .decision-btn.selected {
+            background: #90EE90;
+            color: #021302;
+        }
+
+        .quiz-panel {
+            background: rgba(139, 0, 0, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+        }
+
+        .quiz-question {
+            font-size: 16px;
+            color: #8B0000;
+            margin-bottom: 12px;
+            font-weight: bold;
+        }
+
+        .quiz-option {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin: 6px 0;
+            background: #FFF5EE;
+            color: #8B0000;
+            border: 2px solid #F08080;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .quiz-option:hover {
+            background: #FF6B6B;
+            color: #FFF5EE;
+        }
+
+        .quiz-option.correct {
+            background: #90EE90;
+            color: #021302;
+            border-color: #90EE90;
+        }
+
+        .quiz-option.incorrect {
+            background: #DC143C;
+            color: #FFF5EE;
+            border-color: #DC143C;
+        }
+
+        .quiz-option:disabled {
+            cursor: not-allowed;
+        }
+
+        .result-panel {
+            background: rgba(144, 238, 144, 0.2);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            border: 2px solid #90EE90;
+            display: none;
+        }
+
+        .result-panel.show {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .final-summary {
+            background: rgba(255, 228, 225, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            margin-top: 30px;
+            text-align: center;
+            display: none;
+        }
+
+        .final-summary.show {
+            display: block;
+            animation: slideUp 0.8s ease;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(50px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .final-summary h2 {
+            font-size: 32px;
+            color: #8B0000;
+            margin-bottom: 20px;
+        }
+
+        .final-summary p {
+            font-size: 18px;
+            color: #DC143C;
+            line-height: 1.8;
+            margin-bottom: 15px;
+        }
+
+        .poem-quote {
+            background: rgba(139, 0, 0, 0.1);
+            padding: 25px;
+            border-radius: 10px;
+            margin: 25px 0;
+            border-left: 5px solid #90EE90;
+        }
+
+        .poem-quote p {
+            font-size: 22px;
+            color: #8B0000;
+            text-align: center;
+            line-height: 1.6;
+            font-weight: bold;
+        }
+
+        /* 角色特定内容样式 */
+        .role-specific {
+            display: none;
+        }
+
+        .role-specific.active {
+            display: block;
+        }
+
+        @media (max-width: 1200px) {
+            .game-layout {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 28px;
+            }
+            
+            .map-container {
+                height: 400px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>长征之路 - 角色差异化交互地图版</h1>
+            <p>历史情境化互动游戏 - 体验不同角色的长征历程</p>
+            <p>军事指挥员、后勤保障员、宣传教育员各有不同的任务与挑战</p>
+            
+            <div class="audio-control">
+                <audio controls autoplay>
+                    <source src="https://musk-online.fbcontent.cn/pub-musk-ai-studio/workflow/file/audio/5aqxMLdAoh3fTkCVwXRUaZ.mp3" type="audio/mpeg">
+                    您的浏览器不支持音频播放。
+                </audio>
+            </div>
+        </div>
+
+        <div class="game-layout">
+            <!-- 左侧控制面板 -->
+            <div class="control-panel">
+                <div class="role-selection">
+                    <h3>选择角色</h3>
+                    <button class="role-btn" data-role="commander">军事指挥员</button>
+                    <button class="role-btn" data-role="logistics">后勤保障员</button>
+                    <button class="role-btn" data-role="propaganda">宣传教育员</button>
+                </div>
+
+                <div class="game-stats">
+                    <div class="stat-item">
+                        <span>队伍人数:</span>
+                        <span id="troops">86000人</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>物资储备:</span>
+                        <span id="supplies">100%</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>士气状态:</span>
+                        <span id="morale">高昂</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>当前得分:</span>
+                        <span id="score">0分</span>
+                    </div>
+                </div>
+
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+
+                <div class="stage-selector">
+                    <button class="stage-btn active" data-stage="1">第一阶段：突围转移</button>
+                    <button class="stage-btn" data-stage="2" disabled>第二阶段：突破封锁</button>
+                    <button class="stage-btn" data-stage="3" disabled>第三阶段：自然障碍</button>
+                    <button class="stage-btn" data-stage="4" disabled>第四阶段：胜利会师</button>
+                </div>
+            </div>
+
+            <!-- 中间地图区域 -->
+            <div class="map-container">
+                <div id="longMarchMap"></div>
+                
+                <div class="location-info" id="currentLocationInfo">
+                    <h4>当前位置：瑞金</h4>
+                    <p>1934年10月，中央红军从江西瑞金出发，开始了震惊世界的二万五千里长征。</p>
+                </div>
+            </div>
+
+            <!-- 右侧内容面板 -->
+            <div class="content-panel">
+                <!-- 第一阶段 -->
+                <div class="stage-content active" id="stage1">
+                    <h2 class="stage-title">突围与战略转移</h2>
+                    <img src="https://musk-online.fbcontent.cn/pub-musk-ai-studio/workflow/file/picture/EKdWEqRvkV5efyK3k9hZN3.jpg" alt="湘江战役" class="historical-image">
+                    
+                    <div class="historical-material">
+                        <h4>历史背景</h4>
+                        <p>1934年10月，第五次反"围剿"失败，中央红军被迫战略转移，开始长征。蒋介石集结重兵，对红军实行"铁桶合围"。</p>
+                    </div>
+
+                    <div class="historical-material">
+                        <h4>史料原文</h4>
+                        <p>"湘江之战是长征以来最惨烈的一次战斗，红军付出了巨大代价，主力减员过半。" —《红星照耀中国》</p>
+                    </div>
+
+                    <!-- 军事指挥员内容 -->
+                    <div class="role-specific commander" id="stage1-commander">
+                        <div class="decision-panel">
+                            <h4>战术决策：选择突围路线</h4>
+                            <button class="decision-btn" data-decision="frontal" data-stage="1">正面强攻：集中兵力突破敌军防线</button>
+                            <button class="decision-btn" data-decision="flank" data-stage="1">侧翼迂回：利用地形优势包抄敌军</button>
+                            <button class="decision-btn" data-decision="split" data-stage="1">分兵突围：多路出击分散敌军注意力</button>
+                        </div>
+
+                        <div class="quiz-panel">
+                            <div class="quiz-question">军事知识：湘江战役中，红军采用的突破战术主要是什么？</div>
+                            <button class="quiz-option" data-answer="wrong" data-stage="1">A. 围点打援</button>
+                            <button class="quiz-option" data-answer="correct" data-stage="1">B. 正面强攻与侧翼配合</button>
+                            <button class="quiz-option" data-answer="wrong" data-stage="1">C. 诱敌深入</button>
+                        </div>
+                    </div>
+
+                    <!-- 后勤保障员内容 -->
+                    <div class="role-specific logistics" id="stage1-logistics">
+                        <div class="decision-panel">
+                            <h4>物资调配：长征出发前的准备工作</h4>
+                            <button class="decision-btn" data-decision="light" data-stage="1">轻装简从：减少携带物资提高机动性</button>
+                            <button class="decision-btn" data-decision="adequate" data-stage="1">适度携带：平衡机动性与持久作战能力</button>
+                            <button class="decision-btn" data-decision="heavy" data-stage="1">充分准备：携带充足物资应对长期行军</button>
+                        </div>
+
+                        <div class="quiz-panel">
+                            <div class="quiz-question">后勤知识：长征出发时，红军主要携带哪些物资？</div>
+                            <button class="quiz-option" data-answer="wrong" data-stage="1">A. 大量重型武器</button>
+                            <button class="quiz-option" data-answer="correct" data-stage="1">B. 粮食、弹药和简易医疗用品</button>
+                            <button class="quiz-option" data-answer="wrong" data-stage="1">C. 大量金银财宝</button>
+                        </div>
+                    </div>
+
+                    <!-- 宣传教育员内容 -->
+                    <div class="role-specific propaganda" id="stage1-propaganda">
+                        <div class="decision-panel">
+                            <h4>宣传动员：如何向战士解释战略转移</h4>
+                            <button class="decision-btn" data-decision="patriotic" data-stage="1">爱国主义：强调为民族解放而战</button>
+                            <button class="decision-btn" data-decision="revolution" data-stage="1">革命理想：宣传共产主义远大目标</button>
+                            <button class="quiz-option" data-answer="wrong" data-stage="1">C. 大量金银财宝</button>
+                        </div>
+
+                        <div class="quiz-panel">
+                            <div class="quiz-question">宣传知识：长征初期，红军使用的主要宣传口号是什么？</div>
+                            <button class="quiz-option" data-answer="wrong" data-stage="1">A. "打到南京去，活捉蒋介石"</button>
+                            <button class="quiz-option" data-answer="correct" data-stage="1">B. "北上抗日"和"建立新苏区"</button>
+                            <button class="quiz-option" data-answer="wrong" data-stage="1">C. "回家种地，安居乐业"</button>
+                        </div>
+                    </div>
+
+                    <div class="result-panel" id="result1">
+                        <h4>阶段结果</h4>
+                        <p id="result1Text"></p>
+                    </div>
+                </div>
+
+                <!-- 第二阶段 -->
+                <div class="stage-content" id="stage2">
+                    <h2 class="stage-title">突破敌军封锁</h2>
+                    <img src="https://musk-online.fbcontent.cn/pub-musk-ai-studio/workflow/file/picture/42AvNfcZXqZRF84MqYA7Eb.jpg" alt="四渡赤水" class="historical-image">
+                    
+                    <div class="historical-material">
+                        <h4>历史背景</h4>
+                        <p>湘江战役后，中央红军渡过乌江进入贵州。毛泽东重新掌握军事指挥权，采用灵活机动战术，通过四渡赤水、巧渡金沙江等方式摆脱敌军围追堵截。</p>
+                    </div>
+
+                    <div class="historical-material">
+                        <h4>史料原文</h4>
+                        <p>"敌进我退，敌驻我扰，敌疲我打，敌退我追。" —《毛泽东选集》</p>
+                        <p>"四渡赤水出奇兵，毛主席用兵真如神。" —《长征组歌》</p>
+                    </div>
+
+                    <!-- 军事指挥员内容 -->
+                    <div class="role-specific commander" id="stage2-commander">
+                        <div class="decision-panel">
+                            <h4>战术选择：四渡赤水的指挥艺术</h4>
+                            <button class="decision-btn" data-decision="attack" data-stage="2">直接进攻：攻占遵义扩大根据地</button>
+                            <button class="decision-btn" data-decision="feint" data-stage="2">声东击西：假意东渡迷惑敌军</button>
+                            <button class="decision-btn" data-decision="mobile" data-stage="2">运动战：不断转移寻找战机</button>
+                        </div>
+
+                        <div class="quiz-panel">
+                            <div class="quiz-question">军事知识：四渡赤水战役体现的毛泽东军事思想核心是什么？</div>
+                            <button class="quiz-option" data-answer="wrong" data-stage="2">A. 阵地战</button>
+                            <button class="quiz-option" data-answer="correct" data-stage="2">B. 运动战和灵活性</button>
+                            <button class="quiz-option" data-answer="wrong" data-stage="2">C. 持久战</button>
+                        </div>
+                    </div>
+
+                    <!-- 后勤保障员内容 -->
+                    <div class="role-specific logistics" id="stage2-logistics">
+                        <div class="decision-panel">
+                            <h4>物资保障：在贵州山区的补给策略</h4>
+                            <button class="decision-btn" data-decision="local" data-stage="2">就地补给：向当地群众购买粮食</button>
+                            <button class="decision-btn" data-decision="ration" data-stage="2">定量分配：严格控制每日口粮</button>
+                            <button class="decision-btn" data-decision="forage" data-stage="2">野外采集：寻找可食用植物补充</button>
+                        </div>
+
+                        <div class="quiz-panel">
+                            <div class="quiz-question">后勤知识：红军在贵州地区如何解决粮食问题？</div>
+                            <button class="quiz-option" data-answer="wrong" data-stage="2">A. 全靠空投补给</button>
+                            <button class="quiz-option" data-answer="correct" data-stage="2">B. 购买、打土豪和自力更生</button>
+                            <button class="quiz-option" data-answer="wrong" data-stage="2">C. 依赖国际援助</button>
+                        </div>
+                    </div>
+
+                    <!-- 宣传教育员内容 -->
+                    <div class="role-specific propaganda" id="stage2-propaganda">
+                        <div class="decision-panel">
+                            <h4>思想工作：遵义会议后的宣传重点</h4>
+                            <button class="decision-btn" data-decision="unite" data-stage="2">团结一致：强调党中央的正确领导</button>
+                            <button class="decision-btn" data-decision="explain" data-stage="2">解释政策：说明战略转移的必要性</button>
+                            <button class="decision-btn" data-decision="encourage" data-stage="2">鼓舞士气：宣传革命必胜信念</button>
+                        </div>
+
+                        <div class="quiz-panel">
+                            <div class="quiz-question">宣传知识：遵义会议后，红军宣传工作的主要变化是什么？</div>
+                            <button class="quiz-option" data-answer="wrong" data-stage="2">A. 停止一切宣传活动</button>
+                            <button class="quiz-option" data-answer="correct" data-stage="2">B. 强调毛泽东军事路线的正确性</button>
+                            <button class="quiz-option" data-answer="wrong" data-stage="2">C. 转向宗教宣传</button>
+                        </div>
+                    </div>
+
+                    <div class="result-panel" id="result2">
+                        <h4>阶段结果</h4>
+                        <p id="result2Text"></p>
+                    </div>
+                </div>
+
+                <!-- 第三阶段 -->
+                <div class="stage-content" id="stage3">
+                    <h2 class="stage-title">突破自然障碍</h2>
+                    <img src="https://musk-online.fbcontent.cn/pub-musk-ai-studio/workflow/file/picture/ZA7b2iMXZbktSXyGtLLioJ.jpg" alt="翻雪山" class="historical-image">
+                    <img src="https://musk-online.fbcontent.cn/pub-musk-ai-studio/workflow/file/picture/zaFfWcrBH4aPiHFMELoEPE.jpg" alt="过草地" class="historical-image">
+                    
+                    <div class="historical-material">
+                        <h4>历史背景</h4>
+                        <p>红军在长征途中翻越夹金山、穿越茫茫草地，面临寒冷、饥饿、疾病的严峻考验。</p>
+                    </div>
+
+                    <div class="historical-material">
+                        <h4>史料原文</h4>
+                        <p>"草地上没有路，战士们只能靠指南针辨别方向，吃野草和皮带充饥。" —《红军长征回忆录》</p>
+                    </div>
+
+                    <!-- 军事指挥员内容 -->
+                    <div class="role-specific commander" id="stage3-commander">
+                        <div class="decision-panel">
+                            <h4>行军指挥：翻雪山过草地的战术安排</h4>
+                            <button class="decision-btn" data-decision="vanguard" data-stage="3">先锋探路：派出小分队先行侦察</button>
+                            <button class="decision-btn" data-decision="group" data-stage="3">分组行进：将大部队分成若干小队</button>
+                            <button class="decision-btn" data-decision="unified" data-stage="3">统一行动：保持大部队整体行进</button>
+                        </div>
+
+                        <div class="quiz-panel">
+                            <div class="quiz-question">军事知识：红军翻越雪山时最大的挑战是什么？</div>
+                            <button class="quiz-option" data-answer="wrong" data-stage="3">A. 敌军追击</button>
+                            <button class="quiz-option" data-answer="correct" data-stage="3">B. 高原反应和严寒</button>
+                            <button class="quiz-option" data-answer="wrong" data-stage="3">C. 迷路</button>
+                        </div>
+                    </div>
+
+                    <!-- 后勤保障员内容 -->
+                    <div class="role-specific logistics" id="stage3-logistics">
+                        <div class="decision-panel">
+                            <h4>生存保障：极端环境下的物资管理</h4>
+                            <button class="decision-btn" data-decision="forage" data-stage="3">野外采集：识别可食用植物</button>
+                            <button class="decision-btn" data-decision="ration" data-stage="3">严格配给：按最低标准分配粮食</button>
+                            <button class="decision-btn" data-decision="innovate" data-stage="3">创新方法：尝试皮带、草根等替代食物</button>
+                        </div>
+
+                        <div class="quiz-panel">
+                            <div class="quiz-question">后勤知识：红军过草地时如何解决饮水问题？</div>
+                            <button class="quiz-option" data-answer="wrong" data-stage="3">A. 全靠雨水</button>
+                            <button class="quiz-option" data-answer="correct" data-stage="3">B. 寻找干净水源并煮沸消毒</button>
+                            <button class="quiz-option" data-answer="wrong" data-stage="3">C. 直接饮用沼泽水</button>
+                        </div>
+                    </div>
+
+                    <!-- 宣传教育员内容 -->
+                    <div class="role-specific propaganda" id="stage3-propaganda">
+                        <div class="decision-panel">
+                            <h4>精神鼓舞：在极端困难下的思想政治工作</h4>
+                            <button class="decision-btn" data-decision="stories" data-stage="3">讲述故事：传播革命英雄事迹</button>
+                            <button class="decision-btn" data-decision="songs" data-stage="3">唱革命歌曲：用音乐鼓舞士气</button>
+                            <button class="decision-btn" data-decision="solidarity" data-stage="3">强调团结：宣传官兵平等、互助友爱</button>
+                        </div>
+
+                        <div class="quiz-panel">
+                            <div class="quiz-question">宣传知识：红军过草地时宣传工作的重点是什么？</div>
+                            <button class="quiz-option" data-answer="wrong" data-stage="3">A. 批评落后分子</button>
+                            <button class="quiz-option" data-answer="correct" data-stage="3">B. 强调革命乐观主义和艰苦奋斗精神</button>
+                            <button class="quiz-option" data-answer="wrong" data-stage="3">C. 宣传享乐主义</button>
+                        </div>
+                    </div>
+
+                    <div class="result-panel" id="result3">
+                        <h4>阶段结果</h4>
+                        <p id="result3Text"></p>
+                    </div>
+                </div>
+
+                <!-- 第四阶段 -->
+                <div class="stage-content" id="stage4">
+                    <h2 class="stage-title">胜利会师</h2>
+                    <img src="https://musk-online.fbcontent.cn/pub-musk-ai-studio/workflow/file/picture/bBvAtjrQUNxAfMJ6uzfPVE.jpg" alt="会宁会师" class="historical-image">
+                    
+                    <div class="historical-material">
+                        <h4>历史背景</h4>
+                        <p>1936年10月，红军一、二、四方面军在甘肃会宁胜利会师，标志着长征的胜利结束。</p>
+                    </div>
+
+                    <div class="historical-material">
+                        <h4>史料原文</h4>
+                        <p>"五岭逶迤腾细浪，乌蒙磅礴走泥丸。" —毛泽东《长征》</p>
+                    </div>
+
+                    <!-- 军事指挥员内容 -->
+                    <div class="role-specific commander" id="stage4-commander">
+                        <div class="decision-panel">
+                            <h4>会师部署：三军会合的军事安排</h4>
+                            <button class="decision-btn" data-decision="secure" data-stage="4">安全第一：先确保会师区域安全</button>
+                            <button class="decision-btn" data-decision="quick" data-stage="4">快速会合：尽快实现三军会师</button>
+                            <button class="decision-btn" data-decision="ceremony" data-stage="4">隆重仪式：举办盛大庆祝活动鼓舞士气</button>
+                        </div>
+
+                        <div class="quiz-panel">
+                            <div class="quiz-question">军事知识：红军三大主力会师后最重要的任务是什么？</div>
+                            <button class="quiz-option" data-answer="wrong" data-stage="4">A. 立即反攻南京</button>
+                            <button class="quiz-option" data-answer="correct" data-stage="4">B. 休整部队、总结经验、准备抗日</button>
+                            <button class="quiz-option" data-answer="wrong" data-stage="4">C. 解甲归田</button>
+                        </div>
+                    </div>
+
+                    <!-- 后勤保障员内容 -->
+                    <div class="role-specific logistics" id="stage4-logistics">
+                        <div class="decision-panel">
+                            <h4>会师保障：三军会合后的物资统筹</h4>
+                            <button class="decision-btn" data-decision="share" data-stage="4">资源共享：统一调配三军物资</button>
+                            <button class="decision-btn" data-decision="independent" data-stage="4">各自管理：各部队保持独立后勤</button>
+                            <button class="decision-btn" data-decision="central" data-stage="4">集中管理：建立统一的后勤体系</button>
+                        </div>
+
+                        <div class="quiz-panel">
+                            <div class="quiz-question">后勤知识：会师后红军如何解决陕北根据地的粮食问题？</div>
+                            <button class="quiz-option" data-answer="wrong" data-stage="4">A. 全靠苏联援助</button>
+                            <button class="quiz-option" data-answer="correct" data-stage="4">B. 开展大生产运动和自力更生</button>
+                            <button class="quiz-option" data-answer="wrong" data-stage="4">C. 向国民党要粮</button>
+                        </div>
+                    </div>
+
+                    <!-- 宣传教育员内容 -->
+                    <div class="role-specific propaganda" id="stage4-propaganda">
+                        <div class="decision-panel">
+                            <h4>胜利宣传：长征胜利的意义宣传</h4>
+                            <button class="decision-btn" data-decision="achievement" data-stage="4">宣传成就：强调长征的伟大胜利</button>
+                            <button class="decision-btn" data-decision="spirit" data-stage="4">弘扬精神：宣传长征精神的价值</button>
+                            <button class="decision-btn" data-decision="future" data-stage="4">展望未来：宣传抗日救国的任务</button>
+                        </div>
+
+                        <div class="quiz-panel">
+                            <div class="quiz-question">宣传知识：长征胜利后，中国共产党宣传工作的重点转向什么？</div>
+                            <button class="quiz-option" data-answer="wrong" data-stage="4">A. 个人崇拜</button>
+                            <button class="quiz-option" data-answer="correct" data-stage="4">B. 抗日民族统一战线</button>
+                            <button class="quiz-option" data-answer="wrong" data-stage="4">C. 批判长征中的错误</button>
+                        </div>
+                    </div>
+
+                    <div class="result-panel" id="result4">
+                        <h4>阶段结果</h4>
+                        <p id="result4Text"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="final-summary" id="finalSummary">
+            <h2>长征精神永放光芒</h2>
+            <p>您已完成了"长征之路"的全部历程，体验了红军二万五千里长征的艰苦卓绝。</p>
+            <p>长征不仅是一次伟大的军事行动，更是一次理想信念的伟大远征。</p>
+            
+            <div class="poem-quote">
+                <p>"红军不怕远征难，万水千山只等闲。"</p>
+                <p>"长征是宣言书，长征是宣传队，长征是播种机。"</p>
+            </div>
+            
+            <p>长征精神激励着我们在新时代的征程中勇往直前，为实现中华民族伟大复兴的中国梦而奋斗！</p>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // 地点信息数据
+        const locationData = {
+            ruijin: {
+                name: '瑞金',
+                stage: 1,
+                latlng: [25.8852, 116.0271],
+                description: '1934年10月，中央红军从江西瑞金出发，开始了震惊世界的二万五千里长征。瑞金是中华苏维埃共和国临时中央政府所在地，红军从这里踏上了艰苦卓绝的征程。'
+            },
+            xiangjiang: {
+                name: '湘江',
+                stage: 1,
+                latlng: [25.7869, 110.9475],
+                description: '1934年11月，红军突破国民党军队的三道封锁线后，在湘江遭遇最惨烈的战斗。湘江战役是长征以来最激烈的一战，红军付出了巨大代价，但成功突破了敌军的第四道封锁线。'
+            },
+            zunyi: {
+                name: '遵义',
+                stage: 2,
+                latlng: [27.7254, 106.9274],
+                description: '1935年1月，中共中央在遵义召开政治局扩大会议，确立了毛泽东在党中央和红军的领导地位。遵义会议是中国共产党历史上一个生死攸关的转折点。'
+            },
+            chishui: {
+                name: '赤水河',
+                stage: 2,
+                latlng: [28.5903, 105.7021],
+                description: '1935年1月至3月，红军在毛泽东指挥下，四渡赤水河，巧妙地穿插于敌军重兵之间，取得了战略转移中具有决定意义的胜利。四渡赤水是毛泽东军事指挥艺术的得意之笔。'
+            },
+            jinshajiang: {
+                name: '金沙江',
+                stage: 2,
+                latlng: [25.8318, 102.2117],
+                description: '1935年5月，红军巧渡金沙江，摆脱了数十万国民党军队的围追堵截。金沙江水流湍急，红军利用少量船只，历时7天7夜，全部渡过金沙江，取得了战略转移的决定性胜利。'
+            },
+            daduhe: {
+                name: '大渡河',
+                stage: 3,
+                latlng: [29.9124, 102.7797],
+                description: '1935年5月，红军强渡大渡河，飞夺泸定桥。22名勇士冒着敌人的枪林弹雨，攀着铁索夺取了泸定桥，为红军北上开辟了通道。'
+            },
+            jiajinshan: {
+                name: '夹金山',
+                stage: 3,
+                latlng: [30.9618, 102.3543],
+                description: '1935年6月，红军翻越长征途中第一座大雪山——夹金山。夹金山海拔4000多米，终年积雪，空气稀薄，气候恶劣。红军战士们穿着单薄的衣服，克服了常人难以想象的困难。'
+            },
+            caodi: {
+                name: '草地',
+                stage: 3,
+                latlng: [33.5777, 102.9608],
+                description: '1935年8月，红军进入茫茫草地。草地方圆数百里，遍地沼泽，气候恶劣，缺乏粮食。红军战士们靠吃野菜、草根、皮带充饥，许多战士长眠在了草地上。'
+            },
+            huining: {
+                name: '会宁',
+                stage: 4,
+                latlng: [35.6924, 105.0589],
+                description: '1936年10月，红军一、二、四方面军在甘肃会宁胜利会师，标志着长征的胜利结束。会师使红军主力重新集结，为建立抗日民族统一战线和夺取抗日战争胜利奠定了基础。'
+            },
+            yanan: {
+                name: '延安',
+                stage: 4,
+                latlng: [36.5854, 109.4897],
+                description: '1936年10月，红军到达陕北，以延安为中心建立了革命根据地。延安成为中国革命的圣地，中国共产党在这里领导全国人民取得了抗日战争和解放战争的伟大胜利。'
+            }
+        };
+
+        // 长征路线坐标
+        const routeCoordinates = [
+            [25.8852, 116.0271], // 瑞金
+            [25.7869, 110.9475], // 湘江
+            [27.7254, 106.9274], // 遵义
+            [28.5903, 105.7021], // 赤水
+            [25.8318, 102.2117], // 金沙江
+            [29.9124, 102.7797], // 大渡河
+            [30.9618, 102.3543], // 夹金山
+            [33.5777, 102.9608], // 草地
+            [35.6924, 105.0589], // 会宁
+            [36.5854, 109.4897]  // 延安
+        ];
+
+        // 角色特定的决策结果
+        const roleDecisionResults = {
+            commander: {
+                1: {
+                    frontal: { troops: -25000, supplies: -20, morale: '沉重', score: 60, message: '正面强攻虽然突破封锁，但付出了巨大代价，主力损失严重。湘江战役后，红军从8.6万人减至3万余人。' },
+                    flank: { troops: -15000, supplies: -30, morale: '坚定', score: 80, message: '侧翼迂回成功避开主力，保存了更多兵力，但消耗了大量物资。红军成功突破湘江封锁线。' },
+                    split: { troops: -20000, supplies: -15, morale: '担忧', score: 70, message: '分兵突围部分成功，但部队出现失散，需要重新整编。红军付出了较大代价。' }
+                },
+                2: {
+                    attack: { troops: -8000, supplies: -15, morale: '紧张', score: 65, message: '直接进攻暴露了行踪，虽有收获但风险较大。红军需要更灵活的战术。' },
+                    feint: { troops: -3000, supplies: -25, morale: '振奋', score: 95, message: '声东击西战术大获成功！四渡赤水，巧渡金沙江，成功迷惑敌军，取得了战略转移中具有决定意义的胜利。' },
+                    mobile: { troops: -5000, supplies: -10, morale: '焦虑', score: 75, message: '运动战保存了实力，但需要更精准的时机把握。' }
+                },
+                3: {
+                    vanguard: { troops: -12000, supplies: 10, morale: '艰难', score: 70, message: '先锋探路减少了主力损失，但先锋部队伤亡较大。雪山草地行军异常艰苦。' },
+                    group: { troops: -8000, supplies: 20, morale: '希望', score: 85, message: '分组行进提高了生存率，各小队相互支援。红军战士展现了顽强的生命力。' },
+                    unified: { troops: -15000, supplies: -5, morale: '疲惫', score: 60, message: '统一行动造成了较大的非战斗减员。翻雪山过草地考验巨大。' }
+                },
+                4: {
+                    secure: { troops: -2000, supplies: -5, morale: '胜利', score: 90, message: '安全第一的会师部署虽有小幅减员，但成功完成了会师任务。红军三大主力在会宁胜利会师！' },
+                    quick: { troops: -1000, supplies: -10, morale: '团结', score: 100, message: '快速会合展现了优秀的协调能力！长征胜利结束，红军到达陕北，开创了中国革命的新局面。' },
+                    ceremony: { troops: -500, supplies: -15, morale: '欢庆', score: 95, message: '隆重仪式极大鼓舞了士气，长征精神得到弘扬！' }
+                }
+            },
+            logistics: {
+                1: {
+                    light: { troops: -18000, supplies: -40, morale: '疲惫', score: 75, message: '轻装简从提高了机动性，但物资短缺影响了持久作战能力。' },
+                    adequate: { troops: -20000, supplies: -20, morale: '稳定', score: 85, message: '适度携带平衡了机动与持久，为长征奠定了基础。' },
+                    heavy: { troops: -25000, supplies: -5, morale: '沉重', score: 65, message: '充足物资增强了持久力，但严重影响了行军速度。' }
+                },
+                2: {
+                    local: { troops: -5000, supplies: 15, morale: '满意', score: 80, message: '就地补给解决了粮食问题，与群众建立了良好关系。' },
+                    ration: { troops: -3000, supplies: 5, morale: '节制', score: 75, message: '定量分配保证了长期供应，但战士体力受到影响。' },
+                    forage: { troops: -7000, supplies: 25, morale: '艰难', score: 70, message: '野外采集补充了食物，但部分战士因误食中毒。' }
+                },
+                3: {
+                    forage: { troops: -10000, supplies: 30, morale: '艰苦', score: 75, message: '野外采集解决了饥饿问题，但营养价值不足。' },
+                    ration: { troops: -6000, supplies: 10, morale: '节制', score: 80, message: '严格配给延长了生存时间，但战士体力严重下降。' },
+                    innovate: { troops: -8000, supplies: 40, morale: '创新', score: 85, message: '创新方法找到了新食物来源，展现了红军的智慧。' }
+                },
+                4: {
+                    share: { troops: -500, supplies: 20, morale: '团结', score: 90, message: '资源共享增强了部队凝聚力，三军会师后实力大增。' },
+                    independent: { troops: -1000, supplies: 10, morale: '分散', score: 75, message: '各自管理保持了独立性，但协调效率较低。' },
+                    central: { troops: -200, supplies: 30, morale: '高效', score: 95, message: '集中管理提高了后勤效率，为抗日做准备。' }
+                }
+            },
+            propaganda: {
+                1: {
+                    patriotic: { troops: -22000, supplies: -15, morale: '高昂', score: 80, message: '爱国主义宣传激发了战士斗志，但实际困难仍然巨大。' },
+                    revolution: { troops: -18000, supplies: -20, morale: '坚定', score: 85, message: '革命理想教育坚定了信念，湘江战役虽惨烈但士气不减。' },
+                    survival: { troops: -25000, supplies: -10, morale: '现实', score: 70, message: '生存宣传更贴近实际，但理想性不足。' }
+                },
+                2: {
+                    unite: { troops: -4000, supplies: -20, morale: '团结', score: 90, message: '团结一致的宣传增强了党内凝聚力，遵义会议后全军一心。' },
+                    explain: { troops: -5000, supplies: -15, morale: '理解', score: 85, message: '政策解释使战士明白战略意图，四渡赤水得到充分执行。' },
+                    encourage: { troops: -3000, supplies: -25, morale: '振奋', score: 95, message: '鼓舞士气的宣传极大提升了战斗力，巧渡金沙江成功。' }
+                },
+                3: {
+                    stories: { troops: -9000, supplies: -5, morale: '鼓舞', score: 80, message: '英雄事迹传播激发了斗志，雪山草地艰难但信念坚定。' },
+                    songs: { troops: -7000, supplies: -10, morale: '欢快', score: 85, message: '革命歌曲提升了士气，艰苦环境中保持乐观。' },
+                    solidarity: { troops: -5000, supplies: -15, morale: '团结', score: 90, message: '官兵平等宣传增强了凝聚力，共同克服极端困难。' }
+                },
+                4: {
+                    achievement: { troops: -300, supplies: -5, morale: '自豪', score: 85, message: '成就宣传增强了荣誉感，长征胜利意义得到彰显。' },
+                    spirit: { troops: -100, supplies: -10, morale: '崇高', score: 90, message: '精神弘扬提升了思想境界，长征精神成为宝贵财富。' },
+                    future: { troops: -200, supplies: -8, morale: '期待', score: 95, message: '未来展望明确了新任务，抗日救国成为新的奋斗目标。' }
+                }
+            }
+        };
+
+        // 角色特定的问答题目
+        const roleQuizData = {
+            commander: {
+                1: {
+                    question: "军事知识：湘江战役中，红军采用的突破战术主要是什么？",
+                    options: [
+                        { text: "A. 围点打援", correct: false },
+                        { text: "B. 正面强攻与侧翼配合", correct: true },
+                        { text: "C. 诱敌深入", correct: false }
+                    ]
+                },
+                2: {
+                    question: "军事知识：四渡赤水战役体现的毛泽东军事思想核心是什么？",
+                    options: [
+                        { text: "A. 阵地战", correct: false },
+                        { text: "B. 运动战和灵活性", correct: true },
+                        { text: "C. 持久战", correct: false }
+                    ]
+                },
+                3: {
+                    question: "军事知识：红军翻越雪山时最大的挑战是什么？",
+                    options: [
+                        { text: "A. 敌军追击", correct: false },
+                        { text: "B. 高原反应和严寒", correct: true },
+                        { text: "C. 迷路", correct: false }
+                    ]
+                },
+                4: {
+                    question: "军事知识：红军三大主力会师后最重要的任务是什么？",
+                    options: [
+                        { text: "A. 立即反攻南京", correct: false },
+                        { text: "B. 休整部队、总结经验、准备抗日", correct: true },
+                        { text: "C. 解甲归田", correct: false }
+                    ]
+                }
+            },
+            logistics: {
+                1: {
+                    question: "后勤知识：长征出发时，红军主要携带哪些物资？",
+                    options: [
+                        { text: "A. 大量重型武器", correct: false },
+                        { text: "B. 粮食、弹药和简易医疗用品", correct: true },
+                        { text: "C. 大量金银财宝", correct: false }
+                    ]
+                },
+                2: {
+                    question: "后勤知识：红军在贵州地区如何解决粮食问题？",
+                    options: [
+                        { text: "A. 全靠空投补给", correct: false },
+                        { text: "B. 购买、打土豪和自力更生", correct: true },
+                        { text: "C. 依赖国际援助", correct: false }
+                    ]
+                },
+                3: {
+                    question: "后勤知识：红军过草地时如何解决饮水问题？",
+                    options: [
+                        { text: "A. 全靠雨水", correct: false },
+                        { text: "B. 寻找干净水源并煮沸消毒", correct: true },
+                        { text: "C. 直接饮用沼泽水", correct: false }
+                    ]
+                },
+                4: {
+                    question: "后勤知识：会师后红军如何解决陕北根据地的粮食问题？",
+                    options: [
+                        { text: "A. 全靠苏联援助", correct: false },
+                        { text: "B. 开展大生产运动和自力更生", correct: true },
+                        { text: "C. 向国民党要粮", correct: false }
+                    ]
+                }
+            },
+            propaganda: {
+                1: {
+                    question: "宣传知识：长征初期，红军使用的主要宣传口号是什么？",
+                    options: [
+                        { text: "A. \"打到南京去，活捉蒋介石\"", correct: false },
+                        { text: "B. \"北上抗日\"和\"建立新苏区\"", correct: true },
+                        { text: "C. \"回家种地，安居乐业\"", correct: false }
+                    ]
+                },
+                2: {
+                    question: "宣传知识：遵义会议后，红军宣传工作的主要变化是什么？",
+                    options: [
+                        { text: "A. 停止一切宣传活动", correct: false },
+                        { text: "B. 强调毛泽东军事路线的正确性", correct: true },
+                        { text: "C. 转向宗教宣传", correct: false }
+                    ]
+                },
+                3: {
+                    question: "宣传知识：红军过草地时宣传工作的重点是什么？",
+                    options: [
+                        { text: "A. 批评落后分子", correct: false },
+                        { text: "B. 强调革命乐观主义和艰苦奋斗精神", correct: true },
+                        { text: "C. 宣传享乐主义", correct: false }
+                    ]
+                },
+                4: {
+                    question: "宣传知识：长征胜利后，中国共产党宣传工作的重点转向什么？",
+                    options: [
+                        { text: "A. 个人崇拜", correct: false },
+                        { text: "B. 抗日民族统一战线", correct: true },
+                        { text: "C. 批判长征中的错误", correct: false }
+                    ]
+                }
+            }
+        };
+
+        class LongMarchGame {
+            constructor() {
+                this.currentStage = 1;
+                this.selectedRole = '';
+                this.gameStats = {
+                    troops: 86000,
+                    supplies: 100,
+                    morale: '高昂',
+                    score: 0
+                };
+                this.completedStages = [];
+                this.stageDecisionMade = false;
+                this.stageQuizAnswered = false;
+                this.currentLocation = 'ruijin';
+                this.completedLocations = ['ruijin'];
+                this.map = null;
+                this.markers = {};
+                this.route = null;
+                this.init();
+            }
+
+            init() {
+                this.initMap();
+                this.bindEvents();
+                this.updateStats();
+                this.updateProgress();
+                // 默认显示军事指挥员内容
+                this.showRoleSpecificContent('commander');
+            }
+
+            initMap() {
+                // 初始化Leaflet地图
+                this.map = L.map('longMarchMap').setView([30, 105], 5);
+                
+                // 添加高德地图瓦片
+                L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
+                    subdomains: ['1', '2', '3', '4'],
+                    attribution: '&copy; <a href="https://ditu.amap.com/">高德地图</a>'
+                }).addTo(this.map);
+                
+                // 添加长征路线
+                this.route = L.polyline(routeCoordinates, {
+                    color: '#DC143C',
+                    weight: 4,
+                    opacity: 0.7,
+                    dashArray: '10, 10'
+                }).addTo(this.map);
+                
+                // 添加地点标记
+                Object.keys(locationData).forEach(location => {
+                    const data = locationData[location];
+                    const className = location === 'ruijin' ? 'map-point-active' : 'map-point-locked';
+                    
+                    const marker = L.marker(data.latlng, {
+                        icon: L.divIcon({
+                            className: className,
+                            iconSize: [20, 20],
+                            html: `<div style="width: 20px; height: 20px; border-radius: 50%;"></div>`
+                        })
+                    }).addTo(this.map);
+                    
+                    marker.bindPopup(`
+                        <div class="location-tooltip">
+                            <h4>${data.name}</h4>
+                            <p>${data.description}</p>
+                        </div>
+                    `);
+                    
+                    marker.on('click', () => {
+                        this.showLocationInfo(location);
+                    });
+                    
+                    this.markers[location] = marker;
+                });
+                
+                // 设置地图视图以显示整个路线
+                this.map.fitBounds(routeCoordinates);
+            }
+
+            showLocationInfo(location) {
+                const data = locationData[location];
+                const infoDiv = document.getElementById('currentLocationInfo');
+                infoDiv.innerHTML = `
+                    <h4>当前位置：${data.name}</h4>
+                    <p>${data.description}</p>
+                `;
+            }
+
+            updateMapProgress(stage) {
+                // 根据阶段更新地图显示
+                const stageLocations = {
+                    1: ['ruijin', 'xiangjiang'],
+                    2: ['zunyi', 'chishui', 'jinshajiang'],
+                    3: ['daduhe', 'jiajinshan', 'caodi'],
+                    4: ['huining', 'yanan']
+                };
+
+                const locations = stageLocations[stage];
+                locations.forEach((loc, index) => {
+                    setTimeout(() => {
+                        const marker = this.markers[loc];
+                        marker.setIcon(L.divIcon({
+                            className: 'map-point-active',
+                            iconSize: [20, 20],
+                            html: `<div style="width: 20px; height: 20px; border-radius: 50%;"></div>`
+                        }));
+                        
+                        this.currentLocation = loc;
+                        this.showLocationInfo(loc);
+                        
+                        setTimeout(() => {
+                            marker.setIcon(L.divIcon({
+                                className: 'map-point-completed',
+                                iconSize: [20, 20],
+                                html: `<div style="width: 20px; height: 20px; border-radius: 50%;"></div>`
+                            }));
+                        }, 1500);
+                    }, index * 1500);
+                });
+            }
+
+            bindEvents() {
+                // 角色选择
+                document.querySelectorAll('.role-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('selected'));
+                        e.target.classList.add('selected');
+                        this.selectedRole = e.target.dataset.role;
+                        this.showRoleSpecificContent(this.selectedRole);
+                        this.showRoleMessage();
+                    });
+                });
+
+                // 阶段切换
+                document.querySelectorAll('.stage-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const stage = parseInt(e.target.dataset.stage);
+                        if (!e.target.disabled) {
+                            this.switchStage(stage);
+                        }
+                    });
+                });
+
+                // 决策按钮
+                document.querySelectorAll('.decision-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const stage = parseInt(e.target.dataset.stage);
+                        if (stage === this.currentStage && !this.stageDecisionMade && this.selectedRole) {
+                            this.handleDecision(e.target.dataset.decision);
+                            e.target.classList.add('selected');
+                            document.querySelectorAll(`.decision-btn[data-stage="${stage}"]`).forEach(b => {
+                                b.disabled = true;
+                            });
+                            this.stageDecisionMade = true;
+                            this.checkStageCompletion();
+                        }
+                    });
+                });
+
+                // 知识问答
+                document.querySelectorAll('.quiz-option').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const stage = parseInt(e.target.dataset.stage);
+                        if (stage === this.currentStage && !this.stageQuizAnswered && this.selectedRole) {
+                            this.handleQuiz(e.target);
+                            this.stageQuizAnswered = true;
+                            this.checkStageCompletion();
+                        }
+                    });
+                });
+            }
+
+            showRoleSpecificContent(role) {
+                // 隐藏所有角色特定内容
+                document.querySelectorAll('.role-specific').forEach(content => {
+                    content.classList.remove('active');
+                });
+                
+                // 显示当前角色的内容
+                const roleContent = document.querySelectorAll(`.${role}`);
+                roleContent.forEach(content => {
+                    content.classList.add('active');
+                });
+                
+                // 更新问答题目
+                this.updateQuizContent(role);
+            }
+
+            updateQuizContent(role) {
+                const stage = this.currentStage;
+                const quizData = roleQuizData[role][stage];
+                
+                if (quizData) {
+                    const quizPanels = document.querySelectorAll(`.${role} .quiz-panel`);
+                    quizPanels.forEach(panel => {
+                        const questionElem = panel.querySelector('.quiz-question');
+                        const optionsContainer = panel.querySelectorAll('.quiz-option');
+                        
+                        if (questionElem) {
+                            questionElem.textContent = quizData.question;
+                        }
+                        
+                        // 更新选项
+                        quizData.options.forEach((option, index) => {
+                            if (optionsContainer[index]) {
+                                optionsContainer[index].textContent = option.text;
+                                optionsContainer[index].dataset.answer = option.correct ? 'correct' : 'wrong';
+                                optionsContainer[index].disabled = false;
+                                optionsContainer[index].classList.remove('correct', 'incorrect');
+                            }
+                        });
+                    });
+                }
+            }
+
+            showRoleMessage() {
+                const roleMessages = {
+                    commander: '您选择了军事指挥员角色，将负责制定行动路线和战术决策。',
+                    logistics: '您选择了后勤保障员角色，将负责管理物资与补给分配。',
+                    propaganda: '您选择了宣传教育员角色，将负责提升士气和组织动员。'
+                };
+                
+                if (this.selectedRole) {
+                    alert(roleMessages[this.selectedRole]);
+                }
+            }
+
+            switchStage(stage) {
+                this.currentStage = stage;
+                this.stageDecisionMade = false;
+                this.stageQuizAnswered = false;
+                
+                // 隐藏所有阶段内容
+                document.querySelectorAll('.stage-content').forEach(content => {
+                    content.classList.remove('active');
+                });
+                
+                // 显示选中阶段
+                document.getElementById(`stage${stage}`).classList.add('active');
+                
+                // 更新按钮状态
+                document.querySelectorAll('.stage-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                document.querySelector(`[data-stage="${stage}"]`).classList.add('active');
+                
+                // 更新地图
+                this.updateMapProgress(stage);
+                this.updateProgress();
+                
+                // 更新当前角色的内容
+                if (this.selectedRole) {
+                    this.showRoleSpecificContent(this.selectedRole);
+                }
+            }
+
+            handleDecision(decision) {
+                const stage = this.currentStage;
+                const role = this.selectedRole;
+                
+                if (role && roleDecisionResults[role] && roleDecisionResults[role][stage]) {
+                    const result = roleDecisionResults[role][stage][decision];
+                    if (result) {
+                        this.applyResult(result);
+                        this.showStageResult(stage, result.message);
+                    }
+                }
+            }
+
+            handleQuiz(option) {
+                const isCorrect = option.dataset.answer === 'correct';
+                const stage = this.currentStage;
+                const role = this.selectedRole;
+                
+                // 禁用所有选项
+                document.querySelectorAll(`.quiz-option[data-stage="${stage}"]`).forEach(btn => {
+                    btn.disabled = true;
+                    if (btn.dataset.answer === 'correct') {
+                        btn.classList.add('correct');
+                    } else if (btn === option && !isCorrect) {
+                        btn.classList.add('incorrect');
+                    }
+                });
+
+                if (isCorrect) {
+                    this.gameStats.score += 20;
+                    this.gameStats.supplies = Math.min(100, this.gameStats.supplies + 5);
+                    this.gameStats.morale = '振奋';
+                } else {
+                    this.gameStats.troops -= 1000;
+                    this.gameStats.supplies = Math.max(0, this.gameStats.supplies - 5);
+                }
+
+                this.updateStats();
+            }
+
+            checkStageCompletion() {
+                if (this.stageDecisionMade && this.stageQuizAnswered) {
+                    setTimeout(() => {
+                        if (this.currentStage < 4) {
+                            this.completeStage();
+                        } else {
+                            this.showFinalSummary();
+                        }
+                    }, 2000);
+                }
+            }
+
+            completeStage() {
+                this.completedStages.push(this.currentStage);
+                const nextStage = this.currentStage + 1;
+                
+                // 解锁下一阶段
+                const nextBtn = document.querySelector(`[data-stage="${nextStage}"]`);
+                if (nextBtn) {
+                    nextBtn.disabled = false;
+                    nextBtn.style.background = '#90EE90';
+                }
+                
+                // 自动切换到下一阶段
+                setTimeout(() => {
+                    this.switchStage(nextStage);
+                }, 1500);
+            }
+
+            applyResult(result) {
+                this.gameStats.troops = Math.max(0, this.gameStats.troops + result.troops);
+                this.gameStats.supplies = Math.max(0, Math.min(100, this.gameStats.supplies + result.supplies));
+                this.gameStats.morale = result.morale;
+                this.gameStats.score += result.score;
+                this.updateStats();
+            }
+
+            showStageResult(stage, message) {
+                const resultPanel = document.getElementById(`result${stage}`);
+                const resultText = document.getElementById(`result${stage}Text`);
+                resultText.textContent = message;
+                resultPanel.classList.add('show');
+            }
+
+            updateStats() {
+                document.getElementById('troops').textContent = this.gameStats.troops.toLocaleString() + '人';
+                document.getElementById('supplies').textContent = this.gameStats.supplies + '%';
+                document.getElementById('morale').textContent = this.gameStats.morale;
+                document.getElementById('score').textContent = this.gameStats.score + '分';
+            }
+
+            updateProgress() {
+                const progress = (this.currentStage / 4) * 100;
+                document.getElementById('progressFill').style.width = progress + '%';
+            }
+
+            showFinalSummary() {
+                setTimeout(() => {
+                    document.getElementById('finalSummary').classList.add('show');
+                    
+                    // 完成所有地图路径
+                    this.route.setStyle({color: '#90EE90', opacity: 0.9});
+                    
+                    // 所有地点标记为完成
+                    Object.values(this.markers).forEach(marker => {
+                        marker.setIcon(L.divIcon({
+                            className: 'map-point-completed',
+                            iconSize: [20, 20],
+                            html: `<div style="width: 20px; height: 20px; border-radius: 50%;"></div>`
+                        }));
+                    });
+                }, 1000);
+            }
+        }
+
+        // 初始化游戏
+        document.addEventListener('DOMContentLoaded', () => {
+            new LongMarchGame();
+        });
+    </script>
+</body>
+</html>
